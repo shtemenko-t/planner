@@ -195,7 +195,7 @@ body.dragging .list[data-place]{display:block;min-height:52px;outline:2px dashed
 (() => {
 'use strict';
 const KEY = 'planner.v1';
-const VERSION = '2.0';
+const VERSION = '2.1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -526,7 +526,7 @@ function openForm(mode, t){
       const x = byId(form.id); if (!x) return;
       applyForm(x);
       snapshot();
-      if (x.place === 'backlog') { x.doneAt = Date.now(); S.archive.push(toArchive(x, dstr())); S.tasks = S.tasks.filter(y => y.id !== x.id); toast('Сделано, дело в архиве', true); }
+      if (x.place === 'backlog') { x.place = 'optional'; x.planDate = null; x.order = Date.now(); setDone(x, true); toast('Сделано — зачёркнуто в «Сегодня»', true); }
       else { setDone(x, !x.done); }
       save(); closeSheet(); render();
     };
