@@ -149,6 +149,29 @@ textarea.inp{min-height:70px;resize:vertical}
 .toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 .toast button{color:var(--accent);font-weight:700;padding:4px 6px}
 @media (prefers-color-scheme: dark){.toast button{color:#4E7A5D}}
+/* drag */
+#app .task{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.handle{flex:none;width:40px;height:44px;display:grid;place-items:center;color:var(--muted);touch-action:none;cursor:grab}
+.handle svg{width:18px;height:18px}
+.task.ph{opacity:.25}
+.drag-ghost{position:fixed;z-index:40;pointer-events:none;background:var(--card);border-radius:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.22);transform:scale(1.03);border-top:0!important}
+body.dragging{-webkit-user-select:none;user-select:none}
+body.dragging .list[data-place]{display:block;min-height:52px;outline:2px dashed var(--line);outline-offset:-2px}
+.hint{font-size:13px;color:var(--muted);text-align:center;margin:12px 16px 0}
+
+/* free window */
+.win{display:flex;gap:6px;overflow-x:auto;margin-top:14px;padding-bottom:2px;scrollbar-width:none}
+.win::-webkit-scrollbar{display:none}
+.win .chip{flex:none;padding:7px 12px}
+.muted-note{font-size:13px;color:var(--muted);margin:10px 4px 0}
+
+/* week */
+.day{margin-top:22px}
+.day .block-h h2{text-transform:none;letter-spacing:0;font-size:15px;color:var(--text)}
+.day.weekend .block-h h2{color:var(--accent)}
+.plan-x{flex:none;width:40px;height:40px;border-radius:10px;display:grid;place-items:center;color:var(--muted);font-size:18px}
+.quick{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
 .hidden{display:none!important}
 </style>
 </head>
@@ -158,6 +181,7 @@ textarea.inp{min-height:70px;resize:vertical}
 <nav class="tabs"><div class="in">
   <button data-tab="today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Сегодня</button>
   <button data-tab="backlog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>Отложенные<span class="n hidden" id="hotN"></span></button>
+  <button data-tab="week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Неделя</button>
   <button data-tab="archive"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/></svg>Архив</button>
   <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ещё</button>
 </div></nav>
@@ -171,7 +195,7 @@ textarea.inp{min-height:70px;resize:vertical}
 (() => {
 'use strict';
 const KEY = 'planner.v1';
-const VERSION = '1.0';
+const VERSION = '2.0';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -183,6 +207,11 @@ function ymd(s){ const [y,m,d] = s.split('-').map(Number); return [y, m - 1, d];
 const plural = (n, f) => { n = Math.abs(n); const a = n % 100, b = n % 10;
   return f[(a > 10 && a < 20) ? 2 : b === 1 ? 0 : (b >= 2 && b <= 4) ? 1 : 2]; };
 const DUR = [['5','5 мин'],['30','15–30 мин'],['60','1 час'],['half','Полдня']];
+const DURV = { '5':5, '30':30, '60':60, 'half':240 };
+const WIN = [[null,'Всё'],['5','5 мин'],['30','30 мин'],['60','Час'],['half','Полдня']];
+const WIN_TXT = { '5':'5 минут', '30':'полчаса', '60':'час', 'half':'полдня' };
+const addDays = (s, n) => { const d = parseD(s); d.setDate(d.getDate() + n); return dstr(d); };
+const shortDate = s => parseD(s).toLocaleDateString('ru-RU', { weekday:'short', day:'numeric', month:'short' });
 const durLabel = v => (DUR.find(d => d[0] === v) || [,''])[1];
 const PLACES = [['must','Обязательное'],['optional','Необязательное'],['backlog','Отложенные']];
 
@@ -206,13 +235,20 @@ function rollover(){
     if (x.done) { S.archive.push(toArchive(x, x.doneDate || S.day)); arch++; return false; }
     x.place = 'backlog'; x.done = false; back++; return true;
   });
-  S.day = t; save();
-  if (back || arch) {
+  S.day = t;
+  const planned = applyPlans(); save();
+  if (back || arch || planned) {
     const parts = [];
+    if (planned) parts.push(`${planned} ${plural(planned,['запланированное','запланированных','запланированных'])} в плане`);
     if (arch) parts.push(`${arch} ${plural(arch,['дело','дела','дел'])} в архиве`);
     if (back) parts.push(`${back} ${plural(back,['вернулось','вернулись','вернулись'])} в отложенные`);
     setTimeout(() => toast('Новый день: ' + parts.join(', ')), 300);
   }
+}
+function applyPlans(){
+  const t = dstr(); let n = 0;
+  S.tasks.forEach(x => { if (x.place === 'backlog' && x.planDate && x.planDate <= t) { x.place = 'optional'; x.planDate = null; x.done = false; x.order = Date.now() + n; n++; } });
+  return n;
 }
 function toArchive(x, date){
   return { id:x.id, title:x.title, note:x.note||'', urgent:!!x.urgent, deadline:x.deadline||null, dur:x.dur||null,
@@ -249,6 +285,7 @@ function badges(t){
   if (t.urgent) h += '<span class="badge warn">срочно</span>';
   h += deadlineBadge(t);
   if (t.dur) h += `<span class="badge">${durLabel(t.dur)}</span>`;
+  if (t.planDate && t.place === 'backlog') h += `<span class="badge">📅 ${shortDate(t.planDate)}</span>`;
   if (t.note) h += '<span class="badge">📝</span>';
   return h;
 }
@@ -267,6 +304,7 @@ const ICON = {
   down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>',
   up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
   plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  grip:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>',
   restore:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
 };
 
@@ -278,13 +316,11 @@ function setTab(t){ tab = t; try { sessionStorage.setItem('planner.tab', t); } c
 function render(){
   document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   const h = hotCount(); const hn = $('#hotN'); hn.textContent = h; hn.classList.toggle('hidden', !h);
-  $('#app').innerHTML = ({ today:vToday, backlog:vBacklog, archive:vArchive, settings:vSettings })[tab]();
+  $('#app').innerHTML = ({ today:vToday, backlog:vBacklog, week:vWeek, archive:vArchive, settings:vSettings }[tab] || vToday)();
 }
 
 function todayRow(t){
-  const swap = t.place === 'must'
-    ? `<button class="icon-btn" data-act="swap" aria-label="В необязательное">${ICON.down}</button>`
-    : `<button class="icon-btn" data-act="swap" aria-label="В обязательное">${ICON.up}</button>`;
+  const swap = `<span class="handle" aria-label="Перетащить">${ICON.grip}</span>`;
   return `<div class="task ${t.done ? 'done' : ''}" data-id="${t.id}">
     <button class="check" data-act="toggle" aria-label="Готово">${ICON.check}</button>
     <div class="body" data-act="edit"><div class="title">${esc(t.title)}</div><div class="meta">${badges(t)}</div></div>
@@ -303,7 +339,7 @@ function vToday(){
   const sec = (place, title, items) => `
     <section class="block">
       <div class="block-h"><h2>${title}</h2><span class="cnt">${items.length ? items.filter(t=>t.done).length + ' / ' + items.length : ''}</span></div>
-      <div class="list-wrap"><div class="list">${items.map(todayRow).join('')}</div>
+      <div class="list-wrap"><div class="list" data-place="${place}">${items.map(todayRow).join('')}</div>
       <button class="add-row" data-act="add" data-place="${place}">${ICON.plus}Добавить</button></div>
     </section>`;
   return `
@@ -313,17 +349,35 @@ function vToday(){
     </header>
     ${sec('must', 'Обязательное', must)}
     ${sec('optional', 'Необязательное', opt)}
+    ${must.concat(opt).some(t => !t.done) ? '<div class="hint">Чтобы переставить дело или перенести в другой блок, тяни его за ⠿ справа или удерживай палец на деле.</div>' : ''}
     <button class="big-btn" data-act="pick">Взять из отложенных ${bl ? `<span class="n">${bl}</span>` : ''}</button>`;
 }
 
-function backlogRow(t, pickMode){
+// mode: 'list' (вкладка), 'pick' (в сегодня), 'plan' (на дату)
+function backlogRow(t, mode){
+  const btn = mode === 'plan' ? `<button class="pill" data-act="plan-here">+ Сюда</button>`
+    : `<button class="pill" data-act="${mode === 'pick' ? 'take-stay' : 'take'}">→ Сегодня</button>`;
   return `<div class="task" data-id="${t.id}">
     <div class="body" data-act="edit"><div class="title">${esc(t.title)}</div><div class="meta">${badges(t)}</div></div>
-    <button class="pill" data-act="${pickMode ? 'take-stay' : 'take'}">→ Сегодня</button></div>`;
+    ${btn}</div>`;
 }
-function backlogGroups(pickMode){
-  const list = sortedBacklog();
+let win = null;
+try { win = sessionStorage.getItem('planner.win') || null; } catch(e) {}
+function winChips(){
+  return `<div class="win">${WIN.map(([v, l]) => `<button class="chip ${win === v ? 'on' : ''}" data-act="win" data-v="${v || ''}">${l}</button>`).join('')}</div>`;
+}
+function backlogGroups(mode){
+  let list = sortedBacklog();
+  if (mode === 'plan') list = list.filter(x => x.t.planDate !== planFor);
   if (!list.length) return `<div class="empty" style="margin-top:22px">Отложенных дел нет.</div>`;
+  let note = '';
+  if (win) {
+    const lim = DURV[win], all = list.length;
+    list = list.filter(x => x.t.dur && DURV[x.t.dur] <= lim);
+    const noDur = sortedBacklog().filter(x => !x.t.dur).length;
+    note = `<div class="muted-note">Показаны дела, которые можно успеть за ${WIN_TXT[win]}.${noDur ? ` Дела без оценки времени (${noDur}) скрыты — поставь им «Сколько времени».` : ''}</div>`;
+    if (!list.length) return note + `<div class="empty" style="margin-top:14px">Под это окно ничего не подходит.</div>`;
+  }
   const groups = [
     ['hot', 'Горит: дедлайн близко', list.filter(x => x.r[0] === 0)],
     ['warn', 'Срочные', list.filter(x => x.r[0] === 1)],
@@ -331,14 +385,39 @@ function backlogGroups(pickMode){
   ];
   return groups.filter(g => g[2].length).map(([c, title, arr]) => `
     <div class="group-h ${c}"><span class="dot"></span>${title} · ${arr.length}</div>
-    <div class="list">${arr.map(x => backlogRow(x.t, pickMode)).join('')}</div>`).join('');
+    <div class="list">${arr.map(x => backlogRow(x.t, mode)).join('')}</div>`).join('') + note;
 }
 function vBacklog(){
   const n = S.tasks.filter(t => t.place === 'backlog').length;
   return `
     <header class="top"><h1>Отложенные</h1><div class="sub">${n ? `${n} ${plural(n,['дело','дела','дел'])} на потом` : 'Дела на потом, когда будет окно'}</div></header>
     <button class="big-btn" data-act="add" data-place="backlog" style="margin-top:14px">${ICON.plus.replace('<svg','<svg width="20" height="20"')}Новое дело</button>
-    ${backlogGroups(false)}`;
+    ${n ? winChips() : ''}
+    ${backlogGroups('list')}`;
+}
+
+function vWeek(){
+  const today = dstr(); let html = '';
+  for (let i = 1; i <= 7; i++) {
+    const d = addDays(today, i), dt = parseD(d);
+    const items = S.tasks.filter(t => t.place === 'backlog' && t.planDate === d).sort((a, b) => a.createdAt - b.createdAt);
+    let label = dt.toLocaleDateString('ru-RU', { weekday:'long', day:'numeric', month:'long' });
+    label = (i === 1 ? 'Завтра, ' : i === 2 ? 'Послезавтра, ' : '') + (i <= 2 ? label : label[0].toUpperCase() + label.slice(1));
+    const we = dt.getDay() === 0 || dt.getDay() === 6;
+    html += `<section class="day ${we ? 'weekend' : ''}">
+      <div class="block-h"><h2>${label}</h2><span class="cnt">${items.length || ''}</span></div>
+      <div class="list-wrap"><div class="list">${items.map(t => weekRow(t)).join('')}</div>
+      <button class="add-row" data-act="plan-pick" data-date="${d}">${ICON.plus}Добавить из отложенных</button></div></section>`;
+  }
+  const later = S.tasks.filter(t => t.place === 'backlog' && t.planDate && t.planDate > addDays(today, 7)).sort((a, b) => a.planDate < b.planDate ? -1 : 1);
+  if (later.length) html += `<section class="day"><div class="block-h"><h2>Позже</h2><span class="cnt">${later.length}</span></div>
+    <div class="list">${later.map(t => weekRow(t)).join('')}</div></section>`;
+  return `<header class="top"><h1>Неделя</h1><div class="sub">Раскидай отложенные по дням — в свой день дело само появится в «Сегодня»</div></header>${html}`;
+}
+function weekRow(t){
+  return `<div class="task" data-id="${t.id}">
+    <div class="body" data-act="edit"><div class="title">${esc(t.title)}</div><div class="meta">${badges(t).replace(/<span class="badge">📅[^<]*<\/span>/, '')}</div></div>
+    <button class="plan-x" data-act="unplan" aria-label="Убрать с этого дня">✕</button></div>`;
 }
 
 function vArchive(){
@@ -378,7 +457,9 @@ function vSettings(){
               : `<p>В меню браузера выбери «Установить приложение» или «Добавить на главный экран».</p>`}</div>`}
     <div class="card"><h2>Как это работает</h2>
       <ol><li>Всё «на потом» живёт в «Отложенных». Сверху то, у чего дедлайн через 3 дня или раньше, потом срочное, потом остальное.</li>
-      <li>«→ Сегодня» переносит дело в план на день. Стрелкой его можно поднять в обязательное или опустить в необязательное.</li>
+      <li>«→ Сегодня» переносит дело в план на день. Потяни дело за ⠿ (или удерживай палец на нём), чтобы переставить или перенести между «Обязательным» и «Необязательным».</li>
+      <li>«Свободное окно» в «Отложенных»: выбери, сколько у тебя времени, и останутся только дела, которые успеешь.</li>
+      <li>«Неделя»: назначь дело на день — утром того дня оно само окажется в «Сегодня». Любое дело можно перенести на другой день в его карточке.</li>
       <li>Ночью день закрывается сам: сделанное уходит в архив, несделанное возвращается в отложенные.</li></ol></div>
     <div class="card"><div class="btns"><button class="btn danger" data-act="wipe">Удалить все данные</button></div></div>
     <div class="small">План на день · версия ${VERSION}</div>`;
@@ -416,6 +497,10 @@ function openForm(mode, t){
       <div class="row"><button class="chip urgent ${form.urgent ? 'on' : ''}" id="fUrgent">Срочно</button>
       <input class="inp" type="date" id="fDeadline" value="${t.deadline || ''}" style="flex:1">
       <button class="clear" id="fClear" aria-label="Убрать дедлайн">✕</button></div></div>
+    <div class="field"><label class="l">Перенести на день</label>
+      <div class="row"><input class="inp" type="date" id="fPlan" value="${t.planDate || ''}" min="${dstr()}" style="flex:1">
+      <button class="clear" id="fPlanClear" aria-label="Не планировать">✕</button></div>
+      <div class="quick"><button class="chip" data-d="1">Завтра</button><button class="chip" data-d="2">Послезавтра</button><button class="chip" data-d="7">Через неделю</button></div></div>
     <div class="field"><label class="l">Сколько времени</label><div class="chips" id="fDur">
       ${DUR.map(([v, l]) => `<button class="chip ${form.dur === v ? 'on' : ''}" data-v="${v}">${l}</button>`).join('')}</div></div>
     <div class="field"><label class="l">Заметка</label><textarea class="inp" id="fNote" placeholder="Подробности, ссылка…">${esc(t.note || '')}</textarea></div>
@@ -430,6 +515,8 @@ function openForm(mode, t){
     $('#fPlace').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); };
   $('#fUrgent').onclick = e => { form.urgent = !form.urgent; e.currentTarget.classList.toggle('on', form.urgent); };
   $('#fClear').onclick = () => { $('#fDeadline').value = ''; };
+  $('#fPlanClear').onclick = () => { $('#fPlan').value = ''; };
+  $('#sheetIn').querySelectorAll('.quick .chip').forEach(b => b.onclick = () => { $('#fPlan').value = addDays(dstr(), +b.dataset.d); });
   $('#fDur').onclick = e => { const b = e.target.closest('button'); if (!b) return; form.dur = form.dur === b.dataset.v ? null : b.dataset.v;
     $('#fDur').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.v === form.dur)); };
   $('#fSave').onclick = submitForm;
@@ -450,6 +537,10 @@ function applyForm(x){
   const np = form.place;
   if (np !== x.place) { if (np === 'backlog') { x.done = false; x.doneAt = null; x.doneDate = null; } x.place = np; x.order = Date.now(); }
   x.urgent = form.urgent; x.deadline = $('#fDeadline').value || null; x.dur = form.dur; x.note = $('#fNote').value.trim();
+  const pd = $('#fPlan').value || null, today = dstr();
+  if (pd && pd > today) { x.planDate = pd; if (x.place !== 'backlog') { x.place = 'backlog'; x.done = false; x.doneAt = null; x.doneDate = null; } }
+  else if (pd && pd <= today) { x.planDate = null; if (x.place === 'backlog') { x.place = 'optional'; x.order = Date.now(); } }
+  else x.planDate = null;
 }
 function submitForm(){
   const title = $('#fTitle').value.trim();
@@ -459,18 +550,25 @@ function submitForm(){
     applyForm(x); S.tasks.push(x);
   } else { const x = byId(form.id); if (x) applyForm(x); }
   save(); closeSheet(); render();
+  const x = form.mode === 'add' ? S.tasks[S.tasks.length - 1] : byId(form.id);
+  if (x && x.planDate && x.place === 'backlog') toast('Запланировано на ' + shortDate(x.planDate));
 }
 function setDone(x, v){ x.done = v; x.doneAt = v ? Date.now() : null; x.doneDate = v ? dstr() : null; }
 
-function openPick(){
-  const draw = () => `<h3>Из отложенных</h3><div class="pick">${backlogGroups(true)}</div>
+let pickMode = 'pick', planFor = null;
+function pickHtml(){
+  const h = pickMode === 'plan' ? `На ${parseD(planFor).toLocaleDateString('ru-RU', { weekday:'long', day:'numeric', month:'long' })}` : 'Из отложенных';
+  return `<h3>${h}</h3>${winChips()}<div class="pick">${backlogGroups(pickMode)}</div>
     <div class="btns"><button class="btn" data-act="close">Готово</button></div>`;
-  openSheet(draw());
+}
+function openPick(mode = 'pick', date = null){
+  pickMode = mode; planFor = date;
+  openSheet(pickHtml());
   $('#sheetIn').dataset.pick = '1';
 }
 function refreshPick(){ if (sheetOpen && $('#sheetIn').dataset.pick) {
-  $('#sheetIn').innerHTML = '<div class="grab"></div>' + `<h3>Из отложенных</h3><div class="pick">${backlogGroups(true)}</div>
-    <div class="btns"><button class="btn" data-act="close">Готово</button></div>`; } }
+  const sc = $('#sheet').scrollTop;
+  $('#sheetIn').innerHTML = '<div class="grab"></div>' + pickHtml(); $('#sheet').scrollTop = sc; } }
 
 function confirmSheet(text, ok, cb){
   openSheet(`<h3>${text}</h3><div class="btns two"><button class="btn" data-act="close">Отмена</button><button class="btn danger" id="cOk">${ok}</button></div>`);
@@ -479,7 +577,7 @@ function confirmSheet(text, ok, cb){
 
 function takeToday(id){
   const x = byId(id); if (!x) return;
-  snapshot(); x.place = 'optional'; x.done = false; x.order = Date.now(); save();
+  snapshot(); x.place = 'optional'; x.done = false; x.planDate = null; x.order = Date.now(); save();
 }
 
 // ---------- backup ----------
@@ -512,13 +610,18 @@ $('#importFile').onchange = e => {
 
 // ---------- events ----------
 document.addEventListener('click', e => {
+  if (suppressClick) { e.preventDefault(); e.stopPropagation(); return; }
   const tb = e.target.closest('nav.tabs button'); if (tb) { setTab(tb.dataset.tab); return; }
   const el = e.target.closest('[data-act]'); if (!el) return;
   const act = el.dataset.act;
   const row = el.closest('[data-id]'); const id = row && row.dataset.id; const x = id && byId(id);
   switch (act) {
     case 'toggle': if (x) { setDone(x, !x.done); save(); render(); } break;
-    case 'swap': if (x) { x.place = x.place === 'must' ? 'optional' : 'must'; x.order = Date.now(); save(); render(); } break;
+    case 'win': win = el.dataset.v || null; try { win ? sessionStorage.setItem('planner.win', win) : sessionStorage.removeItem('planner.win'); } catch(e) {}
+      render(); refreshPick(); break;
+    case 'plan-pick': openPick('plan', el.dataset.date); break;
+    case 'plan-here': if (x) { snapshot(); x.planDate = planFor; save(); render(); refreshPick(); toast('Запланировано на ' + shortDate(planFor), true); } break;
+    case 'unplan': if (x) { snapshot(); x.planDate = null; save(); render(); toast('Убрано с этого дня', true); } break;
     case 'edit': if (x) openForm('edit', x); break;
     case 'add': openForm('add', { place: el.dataset.place }); break;
     case 'take': if (x) { takeToday(id); render(); toast('Добавлено в «Сегодня»', true); } break;
@@ -537,10 +640,85 @@ document.addEventListener('click', e => {
   }
 });
 
+// ---------- drag & drop (Сегодня) ----------
+let drag = null, pending = null, suppressClick = false, scrollRAF = null;
+function startDrag(row, y){
+  const r = row.getBoundingClientRect();
+  const g = row.cloneNode(true); g.classList.add('drag-ghost');
+  Object.assign(g.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px' });
+  document.body.appendChild(g); row.classList.add('ph'); document.body.classList.add('dragging');
+  drag = { row, g, dy: y - r.top, y };
+  try { navigator.vibrate && navigator.vibrate(12); } catch(e) {}
+  autoScroll();
+}
+function moveDrag(y){
+  drag.y = y; drag.g.style.top = (y - drag.dy) + 'px';
+  const lists = [...document.querySelectorAll('#app .list[data-place]')];
+  let target = null, bestD = Infinity;
+  for (const l of lists) { const r = l.getBoundingClientRect();
+    const d = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0; if (d < bestD) { bestD = d; target = l; } }
+  if (!target) return;
+  const rows = [...target.querySelectorAll('.task:not(.ph):not(.done)')];
+  let before = null;
+  for (const el of rows) { const b = el.getBoundingClientRect(); if (y < b.top + b.height / 2) { before = el; break; } }
+  if (!before) before = target.querySelector('.task.done');
+  if (drag.row.parentElement !== target || drag.row.nextElementSibling !== before) target.insertBefore(drag.row, before);
+}
+function autoScroll(){
+  if (!drag) return;
+  const y = drag.y, h = window.innerHeight;
+  if (y < 90) window.scrollBy(0, -Math.ceil((90 - y) / 6));
+  else if (y > h - 130) window.scrollBy(0, Math.ceil((y - (h - 130)) / 6));
+  scrollRAF = requestAnimationFrame(() => { if (drag) { moveDrag(drag.y); autoScroll(); } });
+}
+function endDrag(){
+  cancelAnimationFrame(scrollRAF);
+  const { row, g } = drag; drag = null;
+  g.remove(); row.classList.remove('ph'); document.body.classList.remove('dragging');
+  const x = byId(row.dataset.id), place = row.parentElement && row.parentElement.dataset.place;
+  if (x && place) {
+    x.place = place;
+    document.querySelectorAll('#app .list[data-place]').forEach(l =>
+      [...l.querySelectorAll('.task')].forEach((el, i) => { const t = byId(el.dataset.id); if (t && !t.done) { t.place = l.dataset.place; t.order = i; } }));
+    save();
+  }
+  suppressClick = true; setTimeout(() => { suppressClick = false; }, 350);
+  render();
+}
+const dragRow = t => t.closest && t.closest('#app .list[data-place] .task:not(.done)');
+document.addEventListener('touchstart', e => {
+  if (drag || e.touches.length > 1) return;
+  const row = dragRow(e.target); if (!row) return;
+  const p = e.touches[0];
+  if (e.target.closest('.handle')) { e.preventDefault(); startDrag(row, p.clientY); return; }
+  if (e.target.closest('.check')) return;
+  pending = { row, x: p.clientX, y: p.clientY, timer: setTimeout(() => { if (pending) { const pr = pending; pending = null; startDrag(pr.row, pr.y); } }, 420) };
+}, { passive: false });
+document.addEventListener('touchmove', e => {
+  const p = e.touches[0];
+  if (drag) { e.preventDefault(); moveDrag(p.clientY); return; }
+  if (pending && Math.hypot(p.clientX - pending.x, p.clientY - pending.y) > 8) { clearTimeout(pending.timer); pending = null; }
+}, { passive: false });
+function touchEnd(e){
+  if (pending) { clearTimeout(pending.timer); pending = null; }
+  if (drag) { if (e.cancelable) e.preventDefault(); endDrag(); }
+}
+document.addEventListener('touchend', touchEnd, { passive: false });
+document.addEventListener('touchcancel', touchEnd, { passive: false });
+document.addEventListener('contextmenu', e => { if (dragRow(e.target)) e.preventDefault(); });
+// мышь (компьютер)
+document.addEventListener('mousedown', e => {
+  if (e.button !== 0 || !e.target.closest('.handle')) return;
+  const row = dragRow(e.target); if (!row) return; e.preventDefault(); startDrag(row, e.clientY);
+});
+document.addEventListener('mousemove', e => { if (drag) moveDrag(e.clientY); });
+document.addEventListener('mouseup', () => { if (drag) endDrag(); });
+
 function tick(){ const before = S.day; rollover(); if (S.day !== before) render(); }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); render(); } });
 setInterval(tick, 60 * 1000);
 
+if (applyPlans()) save();
 rollover(); render();
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
